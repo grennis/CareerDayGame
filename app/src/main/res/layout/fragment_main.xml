@@ -1,0 +1,12 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.vanderlyn.careerday.app.careerdaygame.app.MainActivity$PlaceholderFragment">
+
+    <ImageView android:id="@+id/bird"
+        android:src="@drawable/angry_bird"
+        android:layout_width="64dp"
+        android:layout_height="64dp" />
+
+</RelativeLayout>
