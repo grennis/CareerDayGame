@@ -35,6 +35,8 @@ public class MainActivity extends ActionBarActivity {
     private MediaPlayer mBeepSound;
     private Animation mFadeIn;
 
+    private static final String STATE_SCORE = "score";
+
     public MainActivity() {
     }
 
@@ -65,6 +67,17 @@ public class MainActivity extends ActionBarActivity {
         mBirdView.setVisibility(View.INVISIBLE);
         mBirdView.setOnTouchListener(mGestureListener);
         mContainer.getViewTreeObserver().addOnGlobalLayoutListener(mLayoutListener);
+
+        if (savedInstanceState != null) {
+            mScore = savedInstanceState.getInt(STATE_SCORE);
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putInt(STATE_SCORE, mScore);
     }
 
     private ViewTreeObserver.OnGlobalLayoutListener mLayoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
