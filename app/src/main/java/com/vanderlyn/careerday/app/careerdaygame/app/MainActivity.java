@@ -6,7 +6,10 @@ import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -18,17 +21,16 @@ public class MainActivity extends ActionBarActivity {
     private View.OnTouchListener mGestureListener;
     private View mContainer;
     private int mScore;
-    private boolean mTouchedPig;
     private ImageView mBirdView, mPigView;
     private TextView mScoreView;
     private float mBirdVelocityX, mBirdVelocityY;
     private float mBirdX, mBirdY;
     private float mPigX, mPigY;
-    private long mLastBirdUpdate, mLastPigUpdate;
+    private long mLastBirdUpdate, mNextPigUpdate;
     private float mScreenWidth, mBirdWidth, mPigWidth;
-    private float mScreenHieght, mBirdHeight, mPigHeight;
+    private float mScreenHeight, mBirdHeight, mPigHeight;
     private MediaPlayer mBeepSound;
-    private MediaPlayer mBuzzSound;
+    private Animation mFadeIn;
 
     public MainActivity() {
     }
@@ -42,6 +44,10 @@ public class MainActivity extends ActionBarActivity {
         mPigView = (ImageView)findViewById(R.id.pig);
         mScoreView = (TextView)findViewById(R.id.score);
         mContainer = findViewById(R.id.container);
+
+        mFadeIn = AnimationUtils.loadAnimation(this, android.R.anim.fade_in);
+        mFadeIn.setDuration(750);
+
         mBeepSound = MediaPlayer.create(this, R.raw.beep);
 
         mGestureDetector = new GestureDetector(this, new FlingGestureDetector());
@@ -51,6 +57,7 @@ public class MainActivity extends ActionBarActivity {
             }
         };
 
+        mBirdView.setVisibility(View.INVISIBLE);
         mBirdView.setOnTouchListener(mGestureListener);
         mContainer.getViewTreeObserver().addOnGlobalLayoutListener(mLayoutListener);
     }
@@ -59,16 +66,20 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public void onGlobalLayout() {
             mScreenWidth = mContainer.getWidth();
-            mScreenHieght = mContainer.getHeight();
+            mScreenHeight = mContainer.getHeight();
             mBirdWidth = mBirdView.getWidth();
             mBirdHeight = mBirdView.getHeight();
+            mBirdX = (mScreenWidth / 2) - (mBirdWidth / 2);
+            mBirdY = (mScreenHeight / 2) - (mBirdHeight / 2);
             mPigWidth = mPigView.getWidth();
             mPigHeight = mPigView.getHeight();
+            mBirdView.setVisibility(View.VISIBLE);
+            mBirdView.startAnimation(mFadeIn);
             mLastBirdUpdate = System.currentTimeMillis();
             mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
-            positionPig();
+            positionAndShowPig();
             updateScoreText();
-            new Timer("mBirdView").schedule(new BirdTask(), 100, 20);
+            new Timer("mBirdView").schedule(new UpdateGameTask(), 100, 100);
         }
     };
 
@@ -77,7 +88,6 @@ public class MainActivity extends ActionBarActivity {
         public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
             mBirdVelocityX = vx/15f;
             mBirdVelocityY = vy/15f;
-            mTouchedPig = false;
             return false;
         }
 
@@ -87,23 +97,28 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    private void positionPig() {
+    private void positionAndShowPig() {
         do {
             mPigX = (float)(Math.random() * ((float)mScreenWidth - mPigWidth));
-            mPigY = (float)(Math.random() * ((float)mScreenHieght - mPigHeight));
+            mPigY = (float)(Math.random() * ((float) mScreenHeight - mPigHeight));
         } while (pigAndBirdOverlap());
 
-        mPigView.setX(mPigX);
-        mPigView.setY(mPigY);
+        setXY(mPigView, mPigX, mPigY);
         mPigView.setVisibility(View.VISIBLE);
-        mLastPigUpdate = System.currentTimeMillis();
+        mPigView.startAnimation(mFadeIn);
+        mNextPigUpdate = System.currentTimeMillis() + 3000;
+    }
+
+    private void hidePig() {
+        mPigView.setVisibility(View.INVISIBLE);
+        mNextPigUpdate = System.currentTimeMillis() + (long)(1000 + (3000 * Math.random()));
     }
 
     private void updateScoreText() {
         mScoreView.setText("SCORE: " + mScore);
     }
 
-    private class BirdTask extends TimerTask {
+    private class UpdateGameTask extends TimerTask {
         @Override
         public void run() {
             runOnUiThread(new Runnable() {
@@ -121,15 +136,14 @@ public class MainActivity extends ActionBarActivity {
 
         mBirdX += (mBirdVelocityX * diff) / 100;
         mBirdY += (mBirdVelocityY * diff) / 100;
-        mBirdView.setX(mBirdX);
-        mBirdView.setY(mBirdY);
+        setXY(mBirdView, mBirdX, mBirdY);
 
-        if (!mTouchedPig && pigAndBirdOverlap()) {
+        if (mPigView.getVisibility() == View.VISIBLE && pigAndBirdOverlap()) {
             mScore += 100;
             updateScoreText();
-            mPigView.setVisibility(View.GONE);
+            hidePig();
+            mBeepSound.seekTo(0);
             mBeepSound.start();
-            mTouchedPig = true;
         }
 
         float rate = 1f - (Math.min(diff, 400f) / 400f);
@@ -141,29 +155,23 @@ public class MainActivity extends ActionBarActivity {
             mBirdVelocityX *= -1;
         }
 
-        if ((mBirdY > (mScreenHieght - mBirdHeight)) || (mBirdY < 0)) {
-            mBirdY = Math.max(1, Math.min(mScreenHieght - mBirdHeight - 1, mBirdY));
+        if ((mBirdY > (mScreenHeight - mBirdHeight)) || (mBirdY < 0)) {
+            mBirdY = Math.max(1, Math.min(mScreenHeight - mBirdHeight - 1, mBirdY));
             mBirdVelocityY *= -1;
         }
 
         if (mBirdVelocityX != 0 && mBirdVelocityY != 0 && (Math.abs(mBirdVelocityX) < 5) && (Math.abs(mBirdVelocityY) < 5)) {
             mBirdVelocityX = 0;
             mBirdVelocityY = 0;
+        }
 
-            if (mTouchedPig) {
-                mTouchedPig = false;
-
-                positionPig();
+        if (now > mNextPigUpdate) {
+            if (mPigView.getVisibility() == View.VISIBLE) {
+                mScore -= 100;
+                updateScoreText();
+                hidePig();
             } else {
-                mScore -= 50;
-                updateScoreText();
-                positionPig();
-            }
-        } else {
-            if (now - mLastPigUpdate > 1500) {
-                mScore -= 10;
-                updateScoreText();
-                positionPig();
+                positionAndShowPig();
             }
         }
 
@@ -172,5 +180,13 @@ public class MainActivity extends ActionBarActivity {
 
     private boolean pigAndBirdOverlap() {
         return (mPigX >= (mBirdX - mPigWidth)) && (mPigX <= (mBirdX + mBirdWidth)) && (mPigY >= (mBirdY - mPigHeight)) && (mPigY <= (mBirdY + mBirdHeight));
+    }
+
+    public static void setXY(View v, float l, float t) {
+        if (v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            p.setMargins((int)l, (int)t, 0, 0);
+            v.requestLayout();
+        }
     }
 }

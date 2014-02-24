@@ -6,13 +6,13 @@
     tools:context="com.vanderlyn.careerday.app.careerdaygame.app.MainActivity"
     tools:ignore="MergeRootFrame">
 
-    <ImageView android:id="@+id/bird"
-        android:src="@drawable/bird"
+    <ImageView android:id="@+id/pig"
+        android:src="@drawable/pig"
         android:layout_width="64dp"
         android:layout_height="64dp" />
 
-    <ImageView android:id="@+id/pig"
-        android:src="@drawable/pig"
+    <ImageView android:id="@+id/bird"
+        android:src="@drawable/bird"
         android:layout_width="64dp"
         android:layout_height="64dp" />
 

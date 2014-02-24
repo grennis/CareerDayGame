@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="bird_size">96dp</dimen>
+    <dimen name="pig_size">96dp</dimen>
+</resources>
