@@ -26,10 +26,10 @@ public class MainActivity extends ActionBarActivity {
     private float mBirdVelocityX, mBirdVelocityY;
     private float mBirdX, mBirdY;
     private float mPigX, mPigY;
-    private long mNextPigUpdate;
+    private long mNextPigUpdate, mRestorePigTime;
     private float mScreenWidth, mBirdWidth, mPigWidth;
     private float mScreenHeight, mBirdHeight, mPigHeight;
-    private MediaPlayer mBeepSound;
+    private MediaPlayer mBeepSound, mUpgradeSound, mRestoreSound;
     private Animation mFadeIn;
 
     private static final String STATE_SCORE = "score";
@@ -51,6 +51,8 @@ public class MainActivity extends ActionBarActivity {
         mFadeIn.setDuration(1000);
 
         mBeepSound = MediaPlayer.create(this, R.raw.beep);
+        mUpgradeSound = MediaPlayer.create(this, R.raw.upgrade);
+        mRestoreSound = MediaPlayer.create(this, R.raw.restore);
 
         mGestureDetector = new GestureDetector(this, new FlingGestureDetector());
         mGestureListener = new View.OnTouchListener() {
@@ -155,6 +157,17 @@ public class MainActivity extends ActionBarActivity {
         menu.findItem(R.id.upgrade_bombs).setEnabled(mScore >= 2000);
     }
 
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.upgrade_big_pig && mScore >= 500) {
+            mScore -= 500;
+            updateScoreText();
+            makePigLarge();
+        }
+
+        return super.onContextItemSelected(item);
+    }
+
     private Runnable mGameThread = new Runnable() {
         @Override
         public void run() {
@@ -179,6 +192,7 @@ public class MainActivity extends ActionBarActivity {
         boolean willHidePig = false;
         boolean willShowPig = false;
         boolean willMoveBird = false;
+        boolean willRestorePig = false;
 
         if (mPigView.getVisibility() == View.VISIBLE && pigAndBirdOverlap()) {
             mScore += 100;
@@ -223,15 +237,22 @@ public class MainActivity extends ActionBarActivity {
             }
         }
 
-        if (willMoveBird || willHidePig || willShowPig || willUpdateScoreText) {
-            updateUI(willMoveBird, willHidePig, willShowPig, willUpdateScoreText);
+        if (mRestorePigTime != 0 && time > mRestorePigTime) {
+            willRestorePig = true;
+        }
+
+        if (willMoveBird || willHidePig || willShowPig || willUpdateScoreText || willRestorePig) {
+            updateUI(willMoveBird, willHidePig, willShowPig, willUpdateScoreText, willRestorePig);
         }
     }
 
-    private void updateUI(final boolean willMoveBird, final boolean willHidePig, final boolean willShowPig, final boolean willUpdateScoreText) {
+    private void updateUI(final boolean willMoveBird, final boolean willHidePig, final boolean willShowPig, final boolean willUpdateScoreText, final boolean willRestorePig) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (willRestorePig)
+                    restorePig();
+
                 if (willMoveBird)
                     setXY(mBirdView, mBirdX, mBirdY);
 
@@ -249,6 +270,24 @@ public class MainActivity extends ActionBarActivity {
 
     private boolean pigAndBirdOverlap() {
         return (mPigX >= (mBirdX - mPigWidth)) && (mPigX <= (mBirdX + mBirdWidth)) && (mPigY >= (mBirdY - mPigHeight)) && (mPigY <= (mBirdY + mBirdHeight));
+    }
+
+    private void makePigLarge() {
+        mPigWidth *=2;
+        mPigHeight *= 2;
+        mPigView.getLayoutParams().width *= 2;
+        mPigView.getLayoutParams().height *= 2;
+        mRestorePigTime = System.currentTimeMillis() + 15000;
+        mUpgradeSound.start();
+    }
+
+    private void restorePig() {
+        mRestorePigTime = 0;
+        mPigWidth /=2;
+        mPigHeight /= 2;
+        mPigView.getLayoutParams().width /= 2;
+        mPigView.getLayoutParams().height /= 2;
+        mRestoreSound.start();
     }
 
     public static void setXY(View v, float l, float t) {
