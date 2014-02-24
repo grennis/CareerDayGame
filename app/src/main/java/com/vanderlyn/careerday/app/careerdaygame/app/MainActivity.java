@@ -7,6 +7,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -15,13 +16,19 @@ public class MainActivity extends ActionBarActivity {
     private GestureDetector mGestureDetector;
     private View.OnTouchListener mGestureListener;
     private View mContainer;
+    private int mScore;
+    private boolean mTouchedPig;
     private ImageView mBirdView, mPigView;
+    private TextView mScoreView;
     private float mBirdVelocityX, mBirdVelocityY;
     private float mBirdX, mBirdY;
     private float mPigX, mPigY;
     private long mLastBirdUpdate;
     private float mScreenWidth, mBirdWidth, mPigWidth;
     private float mScreenHieght, mBirdHeight, mPigHeight;
+
+    public MainActivity() {
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +37,7 @@ public class MainActivity extends ActionBarActivity {
 
         mBirdView = (ImageView)findViewById(R.id.bird);
         mPigView = (ImageView)findViewById(R.id.pig);
+        mScoreView = (TextView)findViewById(R.id.score);
         mContainer = findViewById(R.id.container);
 
         mGestureDetector = new GestureDetector(this, new FlingGestureDetector());
@@ -55,6 +63,7 @@ public class MainActivity extends ActionBarActivity {
             mLastBirdUpdate = System.currentTimeMillis();
             mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
             positionPig();
+            updateScoreText();
             new Timer("mBirdView").schedule(new BirdTask(), 100, 20);
         }
     };
@@ -81,6 +90,10 @@ public class MainActivity extends ActionBarActivity {
         mPigView.setVisibility(View.VISIBLE);
     }
 
+    private void updateScoreText() {
+        mScoreView.setText("SCORE: " + mScore);
+    }
+
     private class BirdTask extends TimerTask {
         @Override
         public void run() {
@@ -90,12 +103,6 @@ public class MainActivity extends ActionBarActivity {
             mBirdX += (mBirdVelocityX * diff) / 100;
             mBirdY += (mBirdVelocityY * diff) / 100;
 
-            if ((mBirdX > (mScreenWidth - mBirdWidth)) || (mBirdX < 0))
-                mBirdVelocityX *= -1;
-
-            if ((mBirdY > (mScreenHieght - mBirdHeight)) || (mBirdY < 0))
-                mBirdVelocityY *= -1;
-
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -104,11 +111,14 @@ public class MainActivity extends ActionBarActivity {
                 }
             });
 
-            if (mPigX >= mBirdX && mPigX <= (mBirdX + mBirdWidth) && mPigY >= mBirdY && mPigY <= (mBirdY + mBirdHeight)) {
+            if (!mTouchedPig && mPigX >= (mBirdX - mPigWidth) && mPigX <= (mBirdX + mBirdWidth) && mPigY >= (mBirdY - mPigY) && mPigY <= (mBirdY + mBirdHeight)) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        mScore += 100;
+                        updateScoreText();
                         mPigView.setVisibility(View.GONE);
+                        mTouchedPig = true;
                     }
                 });
             }
@@ -117,11 +127,23 @@ public class MainActivity extends ActionBarActivity {
             mBirdVelocityX = mBirdVelocityX * rate;
             mBirdVelocityY = mBirdVelocityY * rate;
 
+            if ((mBirdX > (mScreenWidth - mBirdWidth)) || (mBirdX < 0)) {
+                mBirdX = Math.max(1, Math.min(mScreenWidth - mBirdWidth - 1, mBirdX));
+                mBirdVelocityX *= -1;
+            }
+
+            if ((mBirdY > (mScreenHieght - mBirdHeight)) || (mBirdY < 0)) {
+                mBirdY = Math.max(1, Math.min(mScreenHieght - mBirdHeight - 1, mBirdY));
+                mBirdVelocityY *= -1;
+            }
+
             if ((Math.abs(mBirdVelocityX) < 5) && (Math.abs(mBirdVelocityY) < 5)) {
                 mBirdVelocityX = 0;
                 mBirdVelocityY = 0;
 
-                if (mPigView.getVisibility() == View.GONE) {
+                if (mTouchedPig) {
+                    mTouchedPig = false;
+
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
