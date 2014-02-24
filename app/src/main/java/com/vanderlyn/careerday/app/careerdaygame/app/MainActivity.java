@@ -77,6 +77,7 @@ public class MainActivity extends ActionBarActivity {
         public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
             mBirdVelocityX = vx/15f;
             mBirdVelocityY = vy/15f;
+            mTouchedPig = false;
             return false;
         }
 
