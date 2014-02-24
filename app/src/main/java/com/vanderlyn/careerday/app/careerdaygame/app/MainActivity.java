@@ -16,9 +16,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
 public class MainActivity extends ActionBarActivity {
     private GestureDetector mGestureDetector;
     private View.OnTouchListener mGestureListener;
@@ -29,7 +26,7 @@ public class MainActivity extends ActionBarActivity {
     private float mBirdVelocityX, mBirdVelocityY;
     private float mBirdX, mBirdY;
     private float mPigX, mPigY;
-    private long mLastBirdUpdate, mNextPigUpdate;
+    private long mNextPigUpdate;
     private float mScreenWidth, mBirdWidth, mPigWidth;
     private float mScreenHeight, mBirdHeight, mPigHeight;
     private MediaPlayer mBeepSound;
@@ -93,11 +90,10 @@ public class MainActivity extends ActionBarActivity {
             mPigHeight = mPigView.getHeight();
             mBirdView.setVisibility(View.VISIBLE);
             mBirdView.startAnimation(mFadeIn);
-            mLastBirdUpdate = System.currentTimeMillis();
             mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
             positionAndShowPig();
             updateScoreText();
-            new Timer("mBirdView").schedule(new UpdateGameTask(), 100, 20);
+            new Thread(mGameThread).start();
         }
     };
 
@@ -136,18 +132,6 @@ public class MainActivity extends ActionBarActivity {
         mScoreView.setText("SCORE: " + mScore);
     }
 
-    private class UpdateGameTask extends TimerTask {
-        @Override
-        public void run() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    updateGame();
-                }
-            });
-        }
-    };
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
@@ -170,52 +154,96 @@ public class MainActivity extends ActionBarActivity {
         menu.findItem(R.id.upgrade_bombs).setEnabled(mScore >= 2000);
     }
 
-    private void updateGame() {
-        long now = System.currentTimeMillis();
-        long diff = now - mLastBirdUpdate;
+    private Runnable mGameThread = new Runnable() {
+        @Override
+        public void run() {
+            long lastTick = System.currentTimeMillis();
 
-        mBirdX += (mBirdVelocityX * diff) / 100;
-        mBirdY += (mBirdVelocityY * diff) / 100;
-        setXY(mBirdView, mBirdX, mBirdY);
+            while (true) {
+                long now = System.currentTimeMillis();
+                updateGameState(now, now - lastTick);
+                lastTick = System.currentTimeMillis();
+
+                try {
+                    Thread.sleep(25);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    };
+
+    private void updateGameState(long time, long diff) {
+        boolean willUpdateScoreText = false;
+        boolean willHidePig = false;
+        boolean willShowPig = false;
+        boolean willMoveBird = false;
 
         if (mPigView.getVisibility() == View.VISIBLE && pigAndBirdOverlap()) {
             mScore += 100;
-            updateScoreText();
-            hidePig();
+            willUpdateScoreText = true;
+            willHidePig = true;
             mBeepSound.seekTo(0);
             mBeepSound.start();
         }
 
-        float rate = 1f - (Math.min(diff, 400f) / 400f);
-        mBirdVelocityX = mBirdVelocityX * rate;
-        mBirdVelocityY = mBirdVelocityY * rate;
+        if (mBirdVelocityX != 0f || mBirdVelocityY != 0f) {
+            willMoveBird = true;
+            mBirdX += (mBirdVelocityX * diff) / 100;
+            mBirdY += (mBirdVelocityY * diff) / 100;
 
-        if ((mBirdX > (mScreenWidth - mBirdWidth)) || (mBirdX < 0)) {
-            mBirdX = Math.max(1, Math.min(mScreenWidth - mBirdWidth - 1, mBirdX));
-            mBirdVelocityX *= -1;
-        }
+            float rate = 1f - (Math.min(diff, 400f) / 400f);
+            mBirdVelocityX = mBirdVelocityX * rate;
+            mBirdVelocityY = mBirdVelocityY * rate;
 
-        if ((mBirdY > (mScreenHeight - mBirdHeight)) || (mBirdY < 0)) {
-            mBirdY = Math.max(1, Math.min(mScreenHeight - mBirdHeight - 1, mBirdY));
-            mBirdVelocityY *= -1;
-        }
+            if ((mBirdX > (mScreenWidth - mBirdWidth)) || (mBirdX < 0)) {
+                mBirdX = Math.max(1, Math.min(mScreenWidth - mBirdWidth - 1, mBirdX));
+                mBirdVelocityX *= -1;
+            }
 
-        if (mBirdVelocityX != 0 && mBirdVelocityY != 0 && (Math.abs(mBirdVelocityX) < 5) && (Math.abs(mBirdVelocityY) < 5)) {
-            mBirdVelocityX = 0;
-            mBirdVelocityY = 0;
-        }
+            if ((mBirdY > (mScreenHeight - mBirdHeight)) || (mBirdY < 0)) {
+                mBirdY = Math.max(1, Math.min(mScreenHeight - mBirdHeight - 1, mBirdY));
+                mBirdVelocityY *= -1;
+            }
 
-        if (now > mNextPigUpdate) {
-            if (mPigView.getVisibility() == View.VISIBLE) {
-                mScore -= 100;
-                updateScoreText();
-                hidePig();
-            } else {
-                positionAndShowPig();
+            if ((Math.abs(mBirdVelocityX) < 5) && (Math.abs(mBirdVelocityY) < 5)) {
+                mBirdVelocityX = 0;
+                mBirdVelocityY = 0;
             }
         }
 
-        mLastBirdUpdate = now;
+        if (time > mNextPigUpdate) {
+            if (mPigView.getVisibility() == View.VISIBLE) {
+                mScore -= 100;
+                willUpdateScoreText = true;
+                willHidePig = true;
+            } else {
+                willShowPig = true;
+            }
+        }
+
+        if (willMoveBird || willHidePig || willShowPig || willUpdateScoreText) {
+            updateUI(willMoveBird, willHidePig, willShowPig, willUpdateScoreText);
+        }
+    }
+
+    private void updateUI(final boolean willMoveBird, final boolean willHidePig, final boolean willShowPig, final boolean willUpdateScoreText) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (willMoveBird)
+                    setXY(mBirdView, mBirdX, mBirdY);
+
+                if (willUpdateScoreText)
+                    updateScoreText();
+
+                if (willHidePig)
+                    hidePig();
+
+                if (willShowPig)
+                    positionAndShowPig();
+            }
+        });
     }
 
     private boolean pigAndBirdOverlap() {
