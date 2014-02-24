@@ -46,7 +46,7 @@ public class MainActivity extends ActionBarActivity {
         mContainer = findViewById(R.id.container);
 
         mFadeIn = AnimationUtils.loadAnimation(this, android.R.anim.fade_in);
-        mFadeIn.setDuration(750);
+        mFadeIn.setDuration(1000);
 
         mBeepSound = MediaPlayer.create(this, R.raw.beep);
 
@@ -79,7 +79,7 @@ public class MainActivity extends ActionBarActivity {
             mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
             positionAndShowPig();
             updateScoreText();
-            new Timer("mBirdView").schedule(new UpdateGameTask(), 100, 100);
+            new Timer("mBirdView").schedule(new UpdateGameTask(), 100, 20);
         }
     };
 
