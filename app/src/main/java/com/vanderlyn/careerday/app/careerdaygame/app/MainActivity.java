@@ -1,105 +1,69 @@
 package com.vanderlyn.careerday.app.careerdaygame.app;
 
-import android.os.SystemClock;
 import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.Fragment;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.GestureDetector;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.os.Build;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends ActionBarActivity {
-
-    private static final int SWIPE_MIN_DISTANCE = 120;
-    private static final int SWIPE_MAX_OFF_PATH = 250;
-    private static final int SWIPE_THRESHOLD_VELOCITY = 200;
-    private GestureDetector gestureDetector;
-    View.OnTouchListener gestureListener;
-    private ImageView bird;
-    private float velocityX = 60;
-    private float velocityY = 60;
-    private float posX = 10;
-    private float posY = 10;
-    private long lastTick;
-    private float width;
-    private float height;
+    private GestureDetector mGestureDetector;
+    private View.OnTouchListener mGestureListener;
+    private View mContainer;
+    private ImageView mBirdView, mPigView;
+    private float mBirdVelocityX, mBirdVelocityY;
+    private float mBirdX, mBirdY;
+    private float mPigX, mPigY;
+    private long mLastBirdUpdate;
+    private float mScreenWidth, mBirdWidth, mPigWidth;
+    private float mScreenHieght, mBirdHeight, mPigHeight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final View container = findViewById(R.id.container);
-        bird = (ImageView)findViewById(R.id.bird);
+        mBirdView = (ImageView)findViewById(R.id.bird);
+        mPigView = (ImageView)findViewById(R.id.pig);
+        mContainer = findViewById(R.id.container);
 
-        // Gesture detection
-        gestureDetector = new GestureDetector(this, new MyGestureDetector());
-        gestureListener = new View.OnTouchListener() {
+        mGestureDetector = new GestureDetector(this, new FlingGestureDetector());
+        mGestureListener = new View.OnTouchListener() {
             public boolean onTouch(View v, MotionEvent event) {
-                return gestureDetector.onTouchEvent(event);
+                return mGestureDetector.onTouchEvent(event);
             }
         };
 
-        //bird.setOnClickListener(this);
-        bird.setOnTouchListener(gestureListener);
-
-
-        lastTick = System.currentTimeMillis();
-        new Timer("bird").schedule(new BirdTask(), 100, 20);
-
-        container.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                width = container.getWidth() - bird.getWidth();
-                height = container.getHeight() - bird.getHeight();
-            }
-        });
+        mBirdView.setOnTouchListener(mGestureListener);
+        mContainer.getViewTreeObserver().addOnGlobalLayoutListener(mLayoutListener);
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
+    private ViewTreeObserver.OnGlobalLayoutListener mLayoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
+        @Override
+        public void onGlobalLayout() {
+            mScreenWidth = mContainer.getWidth();
+            mScreenHieght = mContainer.getHeight();
+            mBirdWidth = mBirdView.getWidth();
+            mBirdHeight = mBirdView.getHeight();
+            mPigWidth = mPigView.getWidth();
+            mPigHeight = mPigView.getHeight();
+            mLastBirdUpdate = System.currentTimeMillis();
+            mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
+            positionPig();
+            new Timer("mBirdView").schedule(new BirdTask(), 100, 20);
         }
-        return super.onOptionsItemSelected(item);
-    }
+    };
 
-    class MyGestureDetector extends GestureDetector.SimpleOnGestureListener {
+    class FlingGestureDetector extends GestureDetector.SimpleOnGestureListener {
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-            try {
-               // Toast.makeText(MainActivity.this, "vx " + vx, Toast.LENGTH_SHORT).show();
-                velocityX = vx/20f;
-                velocityY = vy/20f;
-            } catch (Exception e) {
-                // nothing
-            }
+            mBirdVelocityX = vx/15f;
+            mBirdVelocityY = vy/15f;
             return false;
         }
 
@@ -109,40 +73,65 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    private void positionPig() {
+        mPigX = (float)(Math.random() * ((float)mScreenWidth - mPigWidth));
+        mPigY = (float)(Math.random() * ((float)mScreenHieght - mPigHeight));
+        mPigView.setX(mPigX);
+        mPigView.setY(mPigY);
+        mPigView.setVisibility(View.VISIBLE);
+    }
+
     private class BirdTask extends TimerTask {
         @Override
         public void run() {
             long now = System.currentTimeMillis();
-            long diff = now - lastTick;
+            long diff = now - mLastBirdUpdate;
 
-            posX += (velocityX * diff) / 100;
-            posY += (velocityY * diff) / 100;
+            mBirdX += (mBirdVelocityX * diff) / 100;
+            mBirdY += (mBirdVelocityY * diff) / 100;
 
-            if (posX > width || posX < 0)
-                velocityX =- velocityX;
+            if ((mBirdX > (mScreenWidth - mBirdWidth)) || (mBirdX < 0))
+                mBirdVelocityX *= -1;
 
-            if (posY > height || posY < 0)
-                velocityY =- velocityY;
+            if ((mBirdY > (mScreenHieght - mBirdHeight)) || (mBirdY < 0))
+                mBirdVelocityY *= -1;
 
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    bird.setX(posX);
-                    bird.setY(posY);
+                    mBirdView.setX(mBirdX);
+                    mBirdView.setY(mBirdY);
                 }
             });
 
+            if (mPigX >= mBirdX && mPigX <= (mBirdX + mBirdWidth) && mPigY >= mBirdY && mPigY <= (mBirdY + mBirdHeight)) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mPigView.setVisibility(View.GONE);
+                    }
+                });
+            }
+
             float rate = 1f - (Math.min(diff, 400f) / 400f);
-            velocityX = velocityX * rate;
-            velocityY = velocityY * rate;
+            mBirdVelocityX = mBirdVelocityX * rate;
+            mBirdVelocityY = mBirdVelocityY * rate;
 
-            if (Math.abs(velocityX) < 5)
-                velocityX = 0;
+            if ((Math.abs(mBirdVelocityX) < 5) && (Math.abs(mBirdVelocityY) < 5)) {
+                mBirdVelocityX = 0;
+                mBirdVelocityY = 0;
 
-            if (Math.abs(velocityY) < 5)
-                velocityY = 0;
+                if (mPigView.getVisibility() == View.GONE) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            positionPig();
+                        }
+                    });
+                }
+            }
 
-            lastTick = now;
+            mLastBirdUpdate = now;
         }
     };
 }
