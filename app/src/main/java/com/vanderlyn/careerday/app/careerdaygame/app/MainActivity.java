@@ -1,9 +1,12 @@
 package com.vanderlyn.careerday.app.careerdaygame.app;
 
 import android.media.MediaPlayer;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.view.ContextMenu;
 import android.view.GestureDetector;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,6 +59,8 @@ public class MainActivity extends ActionBarActivity {
                 return mGestureDetector.onTouchEvent(event);
             }
         };
+
+        registerForContextMenu(mBirdView);
 
         mBirdView.setVisibility(View.INVISIBLE);
         mBirdView.setOnTouchListener(mGestureListener);
@@ -129,6 +134,28 @@ public class MainActivity extends ActionBarActivity {
             });
         }
     };
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        openContextMenu(mBirdView);
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        getMenuInflater().inflate(R.menu.upgrades, menu);
+        menu.findItem(R.id.upgrade_big_pig).setEnabled(mScore >= 500);
+        menu.findItem(R.id.upgrade_spikes).setEnabled(mScore >= 1500);
+        menu.findItem(R.id.upgrade_bombs).setEnabled(mScore >= 2000);
+    }
 
     private void updateGame() {
         long now = System.currentTimeMillis();

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/upgrade_big_pig" android:title="500: Big Pig" />
+    <item android:id="@+id/upgrade_spikes" android:title="1000: Bird Spikes" />
+    <item android:id="@+id/upgrade_bombs" android:title="2000: Bird Bombs" />
+</menu>
+
