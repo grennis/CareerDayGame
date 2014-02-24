@@ -90,6 +90,7 @@ public class MainActivity extends ActionBarActivity {
             mPigHeight = mPigView.getHeight();
             mBirdView.setVisibility(View.VISIBLE);
             mBirdView.startAnimation(mFadeIn);
+            mBirdVelocityX = 0.1f; // Trigger it to move
             mContainer.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
             positionAndShowPig();
             updateScoreText();
