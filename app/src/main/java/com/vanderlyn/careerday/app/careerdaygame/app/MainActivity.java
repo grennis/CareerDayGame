@@ -229,7 +229,7 @@ public class MainActivity extends ActionBarActivity {
 
         if (time > mNextPigUpdate) {
             if (mPigView.getVisibility() == View.VISIBLE) {
-                mScore -= 100;
+                mScore -= 50;
                 willUpdateScoreText = true;
                 willHidePig = true;
             } else {
